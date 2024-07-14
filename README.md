@@ -44,12 +44,12 @@ When the command is run withotu the `--serial` flag, the operations in the follo
 
 And this will result in the following behavior depending on the isolation level:
 
-| Isolation level      | DB exception                         | Final counter value |
-|----------------------|--------------------------------------|---------------------|
-| **Read uncommitted** | None                                 | 2 (wrong)           |
-| **Read committed**   | None                                 | 2 (wrong)           |
-| **Repeatable read**  | T2 aborted with SerializationFailure | 2 (correct)         |
-| **Serializable**     | T2 aborted with SerializationFailure | 2 (correct)         |
+| Isolation level      | Final counter value | DB exception                         |
+|----------------------|---------------------|--------------------------------------|
+| **Read uncommitted** | 2 (wrong ❌)         | None                                 |
+| **Read committed**   | 2 (wrong ❌)         | None                                 |
+| **Repeatable read**  | 2 (correct ✅)       | T2 aborted with SerializationFailure |
+| **Serializable**     | 2 (correct ✅)       | T2 aborted with SerializationFailure |
 
 As you can see, under the `Read uncommitted` and `Read committed` isolation levels, the invalid sequence of operation
 resulting in the wrong result (final counter value 2 instead of 3) is let go through.
