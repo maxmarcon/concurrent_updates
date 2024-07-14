@@ -3,13 +3,10 @@
 This program simulates 2 concurrent transactions that try to increment the same counter (initialized with 1) in a postgres table under 
 a given [isolation level](https://www.postgresql.org/docs/current/transaction-iso.html).
 
-## Before running
+## Setup
 
-Start a postgres database with the following command:
-
-```
-docker run  --rm -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres 
-```
+1. Install packages: `pip install -r requirements.txt`
+2. Start a postgres database with the following command: `docker run  --rm -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres`
 
 ## Usage
 
