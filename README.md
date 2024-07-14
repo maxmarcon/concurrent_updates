@@ -26,7 +26,7 @@ options:
 
 ## Explanation
 
-When the command is run with the `--serial` flag, these operations will be performed on the counter, in this order:
+When the command is run with the `--serial` flag, the operations from the 2 transactions (T1 amd T2) will be performed on the counter in the following order:
 
 1. T1 reads counter
 1. T1 increments counters and commits
@@ -35,12 +35,12 @@ When the command is run with the `--serial` flag, these operations will be perfo
 
 This causes no serialization errors, and the final value of the counter is the correct one (3) under any isolation level.
 
-When the command is run withotu the `--serial` flag, the operations in the following order:
+When the command is run without the `--serial` flag, the operations from T1 and T2 are interleaved and executed in the following order:
 
-1: T1 reads counter
-1: T2 reads counter
-1: T1 increments counters and commits
-1: T2 increments counters and commits
+1. T1 reads counter
+1. T2 reads counter
+1. T1 increments counters and commits
+1. T2 increments counters and commits
 
 And this will result in the following behavior depending on the isolation level:
 
