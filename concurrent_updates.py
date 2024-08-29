@@ -1,7 +1,8 @@
 #! /usr/bin/env python
 
-import psycopg, traceback
-from psycopg import IsolationLevel, Connection
+import traceback
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import Engine, Connection
 from argparse import ArgumentParser
 
 parser = ArgumentParser()
@@ -10,7 +11,7 @@ parser.add_argument(
     choices=["ru", "rc", "rr", "s"],
     help="""
 isolation level:
-ru (read uncomitted)
+ru (read uncomitted)    
 rc (read committed)
 rr (repeatable reads)
 s (serializable)
@@ -28,10 +29,10 @@ parser.add_argument(
 args = parser.parse_args()
 
 isolation_level_map = {
-    "ru": IsolationLevel.READ_UNCOMMITTED,
-    "rc": IsolationLevel.READ_COMMITTED,
-    "rr": IsolationLevel.REPEATABLE_READ,
-    "s": IsolationLevel.SERIALIZABLE,
+    "ru": "READ UNCOMMITTED",
+    "rc": "READ COMMITTED",
+    "rr": "REPEATABLE READ",
+    "s": "SERIALIZABLE",
 }
 
 
@@ -39,19 +40,24 @@ target_isolation_level = isolation_level_map[args.isolation_level]
 
 COUNTER_NAME = "a"
 
+engine = create_engine(
+    "postgresql+psycopg://postgres:postgres@localhost/postgres",
+    isolation_level=target_isolation_level,
+)
 
-def open_connection() -> Connection:
-    return psycopg.connect(
-        "postgresql://postgres:postgres@localhost/postgres", autocommit=False
-    )
+
+def open_connection(engine: Engine) -> Connection:
+    return engine.connect()
 
 
 def init_counter(conn: Connection):
     conn.execute(
-        "CREATE TABLE IF NOT EXISTS counter (name text primary key, value int)"
+        text("CREATE TABLE IF NOT EXISTS counter (name text primary key, value int)")
     )
     conn.execute(
-        "INSERT INTO counter VALUES (%(name)s, %(value)s) ON CONFLICT ON CONSTRAINT counter_pkey DO UPDATE SET value = %(value)s",
+        text(
+            "INSERT INTO counter VALUES (:name, :value) ON CONFLICT ON CONSTRAINT counter_pkey DO UPDATE SET value = :value"
+        ),
         dict(name=COUNTER_NAME, value=1),
     )
     conn.commit()
@@ -59,25 +65,21 @@ def init_counter(conn: Connection):
 
 def read_counter(conn: Connection) -> int:
     (value,) = conn.execute(
-        "SELECT value FROM counter WHERE name = %s", [COUNTER_NAME]
+        text("SELECT value FROM counter WHERE name = :name"), dict(name=COUNTER_NAME)
     ).fetchone()
     return value
 
 
 def update_counter(conn: Connection, value: int) -> int:
     (value,) = conn.execute(
-        "UPDATE counter SET value = %(value)s WHERE name = %(name)s RETURNING value",
+        text("UPDATE counter SET value = :value WHERE name = :name RETURNING value"),
         dict(value=value, name=COUNTER_NAME),
     ).fetchone()
     return value
 
 
-c1 = open_connection()
-c2 = open_connection()
-
-print(f"setting transaction isolation level to: {str(target_isolation_level)}")
-c1.set_isolation_level(target_isolation_level)
-c2.set_isolation_level(target_isolation_level)
+c1 = open_connection(engine)
+c2 = open_connection(engine)
 
 init_counter(c1)
 print(f"initial counter value is {read_counter(c1)}")
@@ -123,6 +125,6 @@ execution is interleaved:
         print(f"T2 could not update counter: {traceback.format_exc(0)}")
     c2.commit()
 
-c3 = open_connection()
+c3 = open_connection(engine)
 value = read_counter(c3)
 print(f"final counter value is {value}")
